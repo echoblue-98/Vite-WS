@@ -1,13 +1,23 @@
-from fastapi import FastAPI, Request
+
+"""
+eq_api.py
+FastAPI sub-app for EQ scoring endpoint. Clean, documented, and ready for extension.
+"""
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI()
 
 class EQRequest(BaseModel):
+    """Request model for EQ scoring."""
     response: str
     inflection: dict
 
-def calculate_eq_score(response, inflection):
+def calculate_eq_score(response: str, inflection: dict) -> int:
+    """
+    Calculate a simple EQ score based on response text and inflection features.
+    - Adds points for emotional language, high pitch, and long responses.
+    """
     score = 0
     if "I feel" in response:
         score += 20
@@ -19,5 +29,9 @@ def calculate_eq_score(response, inflection):
 
 @app.post("/score")
 async def score_endpoint(req: EQRequest):
+    """
+    POST /score
+    Returns an EQ score for the given response and inflection features.
+    """
     eq_score = calculate_eq_score(req.response, req.inflection)
     return {"eq_score": eq_score}
