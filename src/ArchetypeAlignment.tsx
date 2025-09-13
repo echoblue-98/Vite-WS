@@ -7,6 +7,7 @@ interface ArchetypeInfo {
   color: string;
 }
 
+// Archetype definitions for alignment display
 const ARCHETYPES: Record<string, ArchetypeInfo> = {
   "The Resonant Eye": {
     archetype: "The Resonant Eye",
@@ -28,18 +29,23 @@ const ARCHETYPES: Record<string, ArchetypeInfo> = {
   }
 };
 
+
+// Props for ArchetypeAlignment component
 interface ArchetypeAlignmentProps {
   archetype: string;
   eqScore?: number;
 }
 
-export default function ArchetypeAlignment({ archetype, eqScore }: ArchetypeAlignmentProps) {
-  const info = ARCHETYPES[archetype] || {
+const ArchetypeAlignment: React.FC<ArchetypeAlignmentProps> = ({ archetype, eqScore }) => {
+  // Fallback info for unknown archetypes (must be inside function to access prop)
+  const FALLBACK_INFO: ArchetypeInfo = {
     archetype,
     icon: "❓",
     description: "No description available.",
     color: "bg-gray-100"
   };
+  // Get archetype info or fallback
+  const info = ARCHETYPES[archetype] || FALLBACK_INFO;
   return (
     <div className={`rounded-xl p-4 shadow-lg flex items-center gap-4 ${info.color} mt-4`}>
       <span className="text-3xl">{info.icon}</span>
@@ -53,3 +59,5 @@ export default function ArchetypeAlignment({ archetype, eqScore }: ArchetypeAlig
     </div>
   );
 }
+
+export default ArchetypeAlignment;

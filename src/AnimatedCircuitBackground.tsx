@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from "react";
 
 // Futuristic Tron-style animated circuit background using Canvas
 const AnimatedCircuitBackground: React.FC = () => {
+  // Canvas ref for drawing
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -12,6 +13,7 @@ const AnimatedCircuitBackground: React.FC = () => {
     if (!ctx) return;
 
     let animationFrameId: number;
+    // Device pixel ratio for crisp rendering
     const dpr = window.devicePixelRatio || 1;
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -21,7 +23,7 @@ const AnimatedCircuitBackground: React.FC = () => {
     canvas.style.height = `${height}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Circuit line data
+    // Circuit line data (randomized)
     const lines = Array.from({ length: 32 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -32,6 +34,7 @@ const AnimatedCircuitBackground: React.FC = () => {
       glow: Math.random() > 0.5 ? '#00fff7' : '#7f5cff',
     }));
 
+    // Draw all circuit lines
     function drawCircuit() {
       if (!ctx) return;
       ctx.clearRect(0, 0, width, height);
@@ -55,6 +58,7 @@ const AnimatedCircuitBackground: React.FC = () => {
       ctx.restore();
     }
 
+    // Animate circuit lines
     function animate() {
       for (const line of lines) {
         line.x += Math.cos(line.angle) * line.speed;
