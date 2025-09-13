@@ -1,49 +1,50 @@
-import React, { useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from 'react';
 
+// Number of animated particles
 const NUM_PARTICLES = 60;
+// Particle color palette
 const COLORS = ["#00f0ff", "#0ff", "#00ff99", "#1a8cff"];
-
+// Particle shadow blur
+const SHADOW_BLUR = 16;
 function randomBetween(a: number, b: number) {
   return a + Math.random() * (b - a);
-import React, { useEffect, useState } from 'react';
 }
 
 const ParticleBackground: React.FC = () => {
-// Fetch backend data on mount and store in local state
-export default function ParticleBackground(props) {
-  const [backendMessage, setBackendMessage] = useState(null);
+  // Backend message state
+  const [backendMessage, setBackendMessage] = useState<string | null>(null);
+  // Canvas ref
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Animation frame ref
+  const animationRef = useRef<number | undefined>(undefined);
+  // Particle array ref (typed)
+  type Particle = {
+    x: number;
+    y: number;
+    r: number;
+    dx: number;
+    dy: number;
+    color: string;
+    alpha: number;
+  };
+  const particles = useRef<Particle[]>([]);
 
+  // Fetch backend message on mount
   useEffect(() => {
-    fetch('http://localhost:8000/')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/';
+    fetch(apiUrl)
       .then(response => response.json())
       .then(data => setBackendMessage(data.message))
       .catch(error => console.error('Backend fetch error:', error));
   }, []);
 
-  // ...existing code...
-  return (
-    <>
-      {/* ...existing JSX... */}
-      {backendMessage && (
-        <div style={{ position: 'absolute', top: 0, right: 0, background: '#fff', color: '#222', padding: '0.5em', zIndex: 1000 }}>
-          Backend: {backendMessage}
-        </div>
-      )}
-    </>
-  );
-}
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationRef = useRef<number | undefined>(undefined);
-  const particles = useRef<any[]>([]);
-
+  // Handle canvas drawing and animation
   useEffect(() => {
-    // Only run on client
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas?.getContext("2d");
     if (!ctx) return;
 
-    // Initialize particles after window is available
+    // Initialize particles
     particles.current = Array.from({ length: NUM_PARTICLES }, () => ({
       x: randomBetween(0, window.innerWidth),
       y: randomBetween(0, window.innerHeight),
@@ -54,6 +55,7 @@ export default function ParticleBackground(props) {
       alpha: randomBetween(0.5, 1),
     }));
 
+    // Resize canvas to window
     function resize() {
       if (!canvas) return;
       canvas.width = window.innerWidth;
@@ -62,6 +64,7 @@ export default function ParticleBackground(props) {
     resize();
     window.addEventListener("resize", resize);
 
+    // Draw and animate particles
     function draw() {
       if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -72,19 +75,20 @@ export default function ParticleBackground(props) {
         ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
         ctx.fillStyle = p.color;
         ctx.shadowColor = p.color;
-        ctx.shadowBlur = 16;
+        ctx.shadowBlur = SHADOW_BLUR;
         ctx.fill();
         ctx.restore();
         // Move
         p.x += p.dx;
         p.y += p.dy;
-        // Bounce
+        // Bounce off edges
         if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
         if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
       }
       animationRef.current = requestAnimationFrame(draw);
     }
     draw();
+    // Cleanup on unmount
     return () => {
       window.removeEventListener("resize", resize);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -92,19 +96,26 @@ export default function ParticleBackground(props) {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: 0,
-        pointerEvents: "none",
-      }}
-      aria-hidden="true"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      />
+      {backendMessage && (
+        <div style={{ position: 'absolute', top: 0, right: 0, background: '#fff', color: '#222', padding: '0.5em', zIndex: 1000 }}>
+          Backend: {backendMessage}
+        </div>
+      )}
+    </>
   );
 };
 

@@ -8,43 +8,24 @@ interface ArchetypeInfo {
 }
 
 const ARCHETYPES: Record<string, ArchetypeInfo> = {
-  Flynn: {
-    archetype: "Flynn",
-    icon: "�‍💻",
-    description: "Visionary creator, innovative and adaptable. Inspires others to push boundaries and evolve.",
-    color: "bg-blue-200"
+  "The Resonant Eye": {
+    archetype: "The Resonant Eye",
+    icon: "👁️",
+    description: "Perceptive, emotionally attuned, and insightful. Excels at reading people and situations, making them ideal for roles requiring empathy and strategic vision.",
+    color: "bg-cyan-300"
   },
-  Quorra: {
-    archetype: "Quorra",
-    icon: "⚔️",
-    description: "Curious, loyal, and courageous. Embraces learning and adapts quickly to new challenges.",
-    color: "bg-green-200"
+  "The Discordant": {
+    archetype: "The Discordant",
+    icon: "⚡",
+    description: "Challenger of norms, thrives in ambiguity, and brings creative disruption. Perfect for innovation, risk analysis, and roles that benefit from fresh perspectives.",
+    color: "bg-indigo-400"
   },
-  Tron: {
-    archetype: "Tron",
-    icon: "🛡️",
-    description: "Protector and leader, values justice and loyalty. Excels in roles requiring integrity and resilience.",
-    color: "bg-yellow-200"
-  },
-  Clu: {
-    archetype: "Clu",
-    icon: "🤖",
-    description: "Driven, perfectionist, and strategic. Thrives in high-performance, results-oriented environments.",
-    color: "bg-orange-200"
-  },
-  Castor: {
-    archetype: "Castor",
-    icon: "🎭",
-    description: "Charismatic, adaptable, and resourceful. Excels in communication and creative problem-solving.",
-    color: "bg-purple-200"
-  },
-  Sam: {
-    archetype: "Sam",
-    icon: "🏍️",
-    description: "Bold, independent, and quick-thinking. Takes initiative and adapts to fast-changing situations.",
-    color: "bg-cyan-200"
-  },
-  // Add more Tron Legacy archetypes as needed
+  "Street Mage": {
+    archetype: "Street Mage",
+    icon: "🧙‍♂️",
+    description: "Resourceful, adaptive, and street-smart. Masters of improvisation and communication, they excel in dynamic, client-facing, or negotiation-heavy roles.",
+    color: "bg-pink-400"
+  }
 };
 
 interface ArchetypeAlignmentProps {
