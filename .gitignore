@@ -38,6 +38,11 @@ yarn-error.log*
 # Python virtual environment
 backend/venv/
 
+# Python caches
+__pycache__/
+*.pyc
+.venv/
+
 # env files (can opt-in for committing if needed)
 .env*
 
@@ -46,6 +51,9 @@ backend/venv/
 # VSCode settings
 .vscode/
 .vercel
+
+# Vite cache
+.vite/
 
 # typescript
 *.tsbuildinfo
