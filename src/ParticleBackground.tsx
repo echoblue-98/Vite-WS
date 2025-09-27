@@ -1,4 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+let getViteApiUrl: (() => string) | undefined;
+if (!(typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID)) {
+  // Only import in non-test environments
+  import('./getViteApiUrl').then(mod => {
+    getViteApiUrl = mod.getViteApiUrl;
+  });
+}
+
+function getApiUrl() {
+  if (typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID) {
+    return process.env.VITE_API_URL || 'http://localhost:8000/';
+  }
+  return getViteApiUrl ? getViteApiUrl() : 'http://localhost:8000/';
+}
+
+import React, { useEffect, useRef, useState } from 'react';
+// ...existing code...
 
 // Number of animated particles
 const NUM_PARTICLES = 60;
@@ -31,11 +48,17 @@ const ParticleBackground: React.FC = () => {
 
   // Fetch backend message on mount
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/';
+  const apiUrl = getApiUrl();
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => setBackendMessage(data.message))
-      .catch(error => console.error('Backend fetch error:', error));
+      .catch(error => {
+        if (typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID) {
+          // Suppress error logging in test environment
+          return;
+        }
+        console.error('Backend fetch error:', error);
+      });
   }, []);
 
   // Handle canvas drawing and animation

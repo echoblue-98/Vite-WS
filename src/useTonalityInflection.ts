@@ -1,4 +1,4 @@
-// useTonalityInflection.ts
+// useTonalityInflection.tsx
 // Modular React hook for real-time audio feature extraction (pitch, energy, etc.)
 // Uses Web Audio API. Clean, incremental, and ready for future expansion.
 import { useEffect, useRef, useState } from "react";

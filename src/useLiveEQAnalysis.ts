@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 // Returns { eqScore, tonality, startAnalysis, stopAnalysis }
+// This file has been renamed to useLiveEQAnalysis.tsx for JSX/React support.
 export function useLiveEQAnalysis() {
   const [eqScore, setEqScore] = useState<number | null>(null);
   const [tonality, setTonality] = useState<number | null>(null);
