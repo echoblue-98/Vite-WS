@@ -1,10 +1,12 @@
 import { useCallback } from "react";
+import { getApiUrl } from "./api";
 
 // Fetch and play TTS preamble audio from backend
 export function usePreambleAudio() {
   const playPreamble = useCallback(async (name?: string) => {
     try {
-      const url = `/api/tts/preamble${name ? `?name=${encodeURIComponent(name)}` : ""}`;
+      const base = getApiUrl();
+      const url = `${base}/tts/preamble${name ? `?name=${encodeURIComponent(name)}` : ""}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch preamble audio");
       const blob = await res.blob();
