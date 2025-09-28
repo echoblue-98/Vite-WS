@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { usePreambleAudio } from './usePreambleAudio';
 import { useAppState } from './context/AppStateContext';
 import { getApiUrl } from './api';
 
@@ -8,6 +9,7 @@ interface TronStartScreenProps { onStart: () => void }
 const PHRASES = ['Welcome,', 'initiating', 'your adaptive interview now.'];
 
 const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
+  const { playPreamble } = usePreambleAudio();
   const { state } = useAppState();
   const [phase, setPhase] = useState<'loading'|'playing'|'fallback'|'done'>('loading');
   const [status, setStatus] = useState('Preparing introduction...');
@@ -156,6 +158,13 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
         {phase === 'done' && (
           <button onClick={onStart} data-testid="start-interview" style={btnStyle}>Start Interview</button>
         )}
+        <button
+          type="button"
+          style={{ ...btnStyle, background: '#062c31', color: '#00fff7', border: '1px solid #00fff7' }}
+          onClick={() => playPreamble(state?.candidateName)}
+        >
+          Replay Preamble
+        </button>
       </div>
     </div>
   );
