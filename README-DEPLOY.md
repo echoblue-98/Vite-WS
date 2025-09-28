@@ -5,9 +5,14 @@ Follow these exact steps for stable public URLs.
 ## 1) Backend on Render
 
 - In Render dashboard: New -> Web Service -> Connect your repo
-- Environment: Python, Root Directory: `backend`
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+- Environment: Python
+- Health Check Path: `/health`
+- Preferred: set Root Directory to `backend`
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+- Alternate (works because we added a root delegator): leave Root Directory blank (repo root)
+  - Build Command: `pip install -r requirements.txt` (this file delegates to `backend/requirements.txt`)
+  - Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
 - Add Environment Variables:
   - `ALLOWED_ORIGINS` = `https://YOUR-VERCEL-DOMAIN.vercel.app` (add preview URL later if needed)
   - `ENABLE_PROMETHEUS` = `true`
@@ -17,6 +22,7 @@ Follow these exact steps for stable public URLs.
   - `ELEVENLABS_MODEL_ID` = `eleven_monolingual_v1` (optional; keep default unless directed)
   - `TTS_PREAMBLE_TTL` = `21600` (seconds; cache to control cost/latency)
   - `TTS_RATE_WINDOW_SEC` = `60` and `TTS_RATE_MAX` = `5` (rate-limit per IP)
+  - Optional cache: `REDIS_URL` = `redis://:<password>@host:6379/0` (if you wire Redis; app works without it)
   - Optional narration tuning (override defaults if desired):
     - `PREAMBLE_STABILITY` (default 0.32)
     - `PREAMBLE_SIMILARITY` (default 0.94)
@@ -27,7 +33,12 @@ Follow these exact steps for stable public URLs.
     - `PREAMBLE_PRODUCT` (default "AI Adaptive Interview")
 - Click Deploy; copy the public URL (e.g., `https://your-backend.onrender.com`).
 
-Optional (via repo file): `render.yaml` is included so you can click “Automatic Deploys from YAML”.
+Optional (via repo file): `render.yaml` is included so you can click “Automatic Deploys from YAML”. It sets the Python env, `rootDir: backend`, health check, and the same start/build commands. Secrets like `ELEVENLABS_API_KEY` are referenced via Render Secrets.
+
+Quick verify
+- After deploy, visit `https://your-backend.onrender.com/health` (should return `{ "status": "ok" }`).
+- Visit `/ready` to confirm `tts_enabled: true` once `ELEVENLABS_API_KEY` is set.
+- Test TTS MP3: `GET /tts/preamble?name=FirstName` (browser should download/play an MP3). Headers include `X-Cache` and `X-RateLimit-*`.
 
 ## 2) Frontend on Vercel
 
@@ -67,3 +78,5 @@ Optional (via repo file): `vercel.json` included to set dist dir and a default `
 - 403/CORS: Ensure `ALLOWED_ORIGINS` on Render exactly matches the Vercel URL.
 - 404 on SPA routes: Vercel rewrites are configured in `vercel.json`.
 - Voice upload 501: Ensure `python-multipart` is installed (it is in `backend/requirements.txt`).
+- "Could not open requirements file: requirements.txt": either set Render Root Directory to `backend` (preferred) or leave it blank and rely on the root `requirements.txt` delegator we added. After changing settings, use Render's "Clear build cache" and redeploy.
+- Docker context errors on Render (e.g., `'/backend': not found`): do not use Docker for this project on Render. Use a Python Web Service with the commands above.

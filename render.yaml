@@ -7,6 +7,7 @@ services:
     autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: ALLOWED_ORIGINS
         # Set to your Vercel production URL (exact match). You can add multiple comma-separated.
@@ -16,5 +17,18 @@ services:
       - key: HSTS_ENABLED
         # Disable unless you are fronted by HTTPS/Custom Domain
         value: "false"
+      - key: ELEVENLABS_API_KEY
+        sync: false
       - key: ELEVENLABS_VOICE_ID
         value: aY9ejnGefMHNgwzgYnU1
+      - key: ELEVENLABS_MODEL_ID
+        value: eleven_monolingual_v1
+      - key: TTS_PREAMBLE_TTL
+        value: "21600"
+      - key: TTS_RATE_WINDOW_SEC
+        value: "60"
+      - key: TTS_RATE_MAX
+        value: "5"
+      # Optional caching via Redis
+      - key: REDIS_URL
+        sync: false

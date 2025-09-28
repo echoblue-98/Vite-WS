@@ -35,19 +35,21 @@ class Settings(BaseSettings):
         # 3. Empty / whitespace -> return default by signalling None so pydantic uses default
         # 4. Already a list -> passthrough
         if v is None:
-            return v
+            # No env provided: let pydantic use the model default
+            return Settings.model_fields["allowed_origins"].default
         if isinstance(v, list):
             return v
         if isinstance(v, str):
             raw = v.strip()
             if not raw:
-                # Empty string -> allow default value to remain (return None so default not overridden)
-                return None
+                # Empty string provided via env: fall back to model default to avoid validation error
+                return Settings.model_fields["allowed_origins"].default
             # If looks like a bracketed list, strip brackets then split
             if raw.startswith("[") and raw.endswith("]"):
                 inner = raw[1:-1].strip()
                 if not inner:
-                    return None
+                    # Empty bracketed list: fall back to default
+                    return Settings.model_fields["allowed_origins"].default
                 # Split on commas; allow either quoted or unquoted entries
                 parts = [p.strip().strip('"\'') for p in inner.split(",")]
                 cleaned = [p for p in (s.strip() for s in parts) if p]
