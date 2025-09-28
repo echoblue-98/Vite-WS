@@ -115,7 +115,9 @@ async def health():
 	"""Liveness probe: returns 200 if process is up."""
 	return {"status": "ok"}
 
-@app.get("/ready")
+	api_key = os.getenv("ELEVENLABS_API_KEY")
+	print(f"[DEBUG] ELEVENLABS_API_KEY: {api_key}")
+	eleven_key = bool(api_key)
 async def ready():
 	"""Readiness probe: basic checks (cache size, env presence)."""
 	from backend.tts_preamble import _CACHE  # lightweight import
