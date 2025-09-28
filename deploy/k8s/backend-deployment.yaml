@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eq-backend
+  labels:
+    app: eq-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eq-backend
+  template:
+    metadata:
+      labels:
+        app: eq-backend
+    spec:
+      containers:
+        - name: backend
+          image: your-registry/eq-backend:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_VERSION
+              value: "0.1.0"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: HSTS_ENABLED
+              value: "true"
+            - name: TTS_RATE_WINDOW_SEC
+              value: "60"
+            - name: TTS_RATE_MAX
+              value: "5"
+            - name: TTS_PREAMBLE_TTL
+              value: "21600"
+            - name: ALLOWED_ORIGINS
+              value: "https://your-frontend.example.com"
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eq-backend
+  labels:
+    app: eq-backend
+spec:
+  selector:
+    app: eq-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+  type: ClusterIP

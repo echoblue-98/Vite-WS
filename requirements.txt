@@ -1,0 +1,2 @@
+# Delegate to backend requirements so Render finds this even if it builds from repo root
+-r backend/requirements.txt

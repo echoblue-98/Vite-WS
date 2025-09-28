@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eq-platform
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+spec:
+  rules:
+    - host: api.your-domain.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eq-backend
+                port:
+                  number: 80
+    - host: app.your-domain.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eq-frontend
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - api.your-domain.example.com
+        - app.your-domain.example.com
+      secretName: eq-tls

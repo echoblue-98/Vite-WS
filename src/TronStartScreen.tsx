@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useAppState } from './context/AppStateContext';
 
 interface TronStartScreenProps { onStart: () => void }
 
@@ -6,9 +7,10 @@ interface TronStartScreenProps { onStart: () => void }
 const PHRASES = ['Welcome,', 'initiating', 'your adaptive interview now.'];
 
 const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
+  const { state } = useAppState();
   const [phase, setPhase] = useState<'loading'|'playing'|'fallback'|'done'>('loading');
   const [status, setStatus] = useState('Preparing introduction...');
-  const [skippable, setSkippable] = useState(false);
+  // Skip removed by requirement
 
   // Track currently active audio to allow cleanup on unmount / skip
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -35,6 +37,17 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
   // ensure no trailing slash conflicts in fetch path joining
   apiBase = (apiBase || '').replace(/\/$/, '');
 
+  // Optional overrides for voice/script via env
+  let defaultVoiceId: string | undefined;
+  let defaultModelId: string | undefined;
+  let defaultScript: string | undefined;
+  try {
+    const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
+    defaultVoiceId = metaEnv?.VITE_PREAMBLE_VOICE_ID as string | undefined;
+    defaultModelId = metaEnv?.VITE_PREAMBLE_MODEL_ID as string | undefined;
+    defaultScript = metaEnv?.VITE_PREAMBLE_SCRIPT as string | undefined;
+  } catch {/* ignore */}
+
   useEffect(() => {
     cancelledRef.current = false;
     const isTestEnv = typeof (globalThis as any).jest !== 'undefined' ||
@@ -47,20 +60,25 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
 
     async function attemptDynamic() {
       setStatus('Requesting adaptive narration...');
-      setSkippable(true);
       try {
-  const r = await fetch(`${apiBase}/tts/preamble`);
+    const params = new URLSearchParams();
+    if (state?.candidateName) params.set('name', state.candidateName);
+    if (defaultVoiceId) params.set('voice_id', defaultVoiceId);
+    if (defaultModelId) params.set('model_id', defaultModelId);
+    if (defaultScript) params.set('script', defaultScript);
+  const ttsUrl = `${apiBase}/tts/preamble${params.toString() ? `?${params.toString()}` : ''}`;
+  const r = await fetch(ttsUrl);
         if (!r.ok) throw new Error('TTS fetch failed');
         const blob = await r.blob();
         if (cancelledRef.current) return;
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
+        const objectUrl = URL.createObjectURL(blob);
+        const audio = new Audio(objectUrl);
         activeAudioRef.current = audio;
         audio.onended = () => {
           if (cancelledRef.current) return;
           setPhase('done');
           setStatus('Introduction complete.');
-          URL.revokeObjectURL(url);
+          URL.revokeObjectURL(objectUrl);
           setTimeout(onStart, 600);
         };
         await audio.play();
@@ -68,30 +86,12 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
         setPhase('playing');
         setStatus('Playing adaptive narration...');
       } catch {
-        loadStatic();
+        // Do NOT use static audio fallback; go to live synthesis fallback
+        startDynamicVoice();
       }
     }
 
-    function loadStatic() {
-      setSkippable(true);
-      const audio = new Audio('/preamble-fixed.mp3');
-      activeAudioRef.current = audio;
-      audio.oncanplay = () => {
-        if (cancelledRef.current) return;
-        setPhase('playing');
-        setStatus('Playing introduction...');
-        audio.play().then(() => {
-          audio.onended = () => {
-            if (cancelledRef.current) return;
-            setPhase('done');
-            setStatus('Introduction complete.');
-            setTimeout(onStart, 600);
-          };
-        }).catch(startDynamicVoice);
-      };
-      audio.onerror = startDynamicVoice;
-      audio.load();
-    }
+    // Removed static MP3 fallback per requirement
 
     function startDynamicVoice() {
       if (cancelledRef.current || phase === 'fallback' || phase === 'done') return;
@@ -105,11 +105,8 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
       });
     }
 
-    if (mode === 'static') {
-      loadStatic();
-    } else {
-      attemptDynamic();
-    }
+    // Prefer TTS; if it fails, use web-speech fallback
+    attemptDynamic();
 
     return () => {
       cancelledRef.current = true;
@@ -155,23 +152,13 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
     speakNext();
   }
 
-  function handleSkip() {
-    cancelledRef.current = true;
-    if (activeAudioRef.current) {
-      try { activeAudioRef.current.pause(); } catch {/* ignore */}
-    }
-    setPhase('done');
-    setStatus('Introduction skipped.');
-  }
+  // Skip removed
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#01050a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, zIndex: 100 }}>
       <h1 style={{ fontFamily: 'Orbitron, sans-serif', color: '#00fff7', textShadow: '0 0 14px #00fff7', fontSize: '2.2rem', margin: 0 }}>AI Adaptive Interview</h1>
       <div data-testid="preamble-status" style={{ color: '#9aeff8', fontSize: 16, fontFamily: 'system-ui, sans-serif', textAlign: 'center', maxWidth: 480 }}>{status}</div>
       <div style={{ display: 'flex', gap: 16 }}>
-        {skippable && phase !== 'done' && (
-          <button onClick={handleSkip} data-testid="skip-intro" style={btnStyle}>Skip</button>
-        )}
         {phase === 'done' && (
           <button onClick={onStart} data-testid="start-interview" style={btnStyle}>Start Interview</button>
         )}

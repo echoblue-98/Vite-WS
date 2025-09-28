@@ -10,7 +10,7 @@ except ImportError as e:
     exit(1)
 
 try:
-    from backend.minimal_test import app
+    from backend.main import app
     print("Backend app imported successfully")
     print(f"App routes: {[route.path for route in app.routes]}")
 except Exception as e:

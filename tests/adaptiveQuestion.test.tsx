@@ -4,13 +4,17 @@ import '@testing-library/jest-dom';
 import App from '../src/App';
 import { AppStateProvider } from '../src/context/AppStateContext';
 
-// Mock fetchNextQuestion to simulate backend response and error
-jest.mock('../src/api', () => ({
-  fetchNextQuestion: jest.fn((params: any) => {
-    if (params.text === 'error') return Promise.reject(new Error('Next Question API error'));
-    return Promise.resolve('Mocked next question for: ' + (params.text || 'no text'));
-  })
-}));
+// Mock fetchNextQuestion to simulate backend response and error, but preserve other exports (e.g., getApiUrl)
+jest.mock('../src/api', () => {
+  const actual = jest.requireActual('../src/api');
+  return {
+    ...actual,
+    fetchNextQuestion: jest.fn((params: any) => {
+      if (params.text === 'error') return Promise.reject(new Error('Next Question API error'));
+      return Promise.resolve('Mocked next question for: ' + (params.text || 'no text'));
+    })
+  };
+});
 
 describe('AdaptiveQuestion (integration)', () => {
   it('renders next question from backend', async () => {
@@ -34,6 +38,7 @@ describe('AdaptiveQuestion (integration)', () => {
       selectedArchetype: '',
       voiceTranscript: 'hello',
       isAnalyzing: false,
+      promptOverrides: {},
     };
     render(
       <AppStateProvider initialStateOverride={customInitialState}>
@@ -77,6 +82,7 @@ describe('AdaptiveQuestion (integration)', () => {
       selectedArchetype: '',
       voiceTranscript: 'error',
       isAnalyzing: false,
+      promptOverrides: {},
     };
     render(
       <AppStateProvider initialStateOverride={customInitialState}>

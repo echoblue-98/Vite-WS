@@ -33,11 +33,11 @@ export async function fetchEmotion(text: string): Promise<Record<string, number>
 // src/api.ts
 // Clean API utility for backend integration
 
-function getApiUrl(): string {
-  // Prefer Vite env at build/runtime when available
+export function getApiUrl(): string {
+  // Prefer Vite env at build/runtime when available, but avoid direct import.meta for Jest
   try {
-    // @ts-ignore
-    const viteUrl = import.meta?.env?.VITE_API_URL as string | undefined;
+    const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
+    const viteUrl = (metaEnv && (metaEnv as any).VITE_API_URL) as string | undefined;
     if (viteUrl && viteUrl.length > 0) return viteUrl;
   } catch {}
   // Fallback to Node/Jest env (tests)

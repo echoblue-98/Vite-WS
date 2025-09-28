@@ -17,6 +17,7 @@ describe('Global Error Banner', () => {
       selectedArchetype: '',
       voiceTranscript: '',
       isAnalyzing: false,
+      promptOverrides: {},
     };
     render(
       <AppStateProvider initialStateOverride={mockState}>

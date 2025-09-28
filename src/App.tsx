@@ -1,4 +1,5 @@
 import React from 'react';
+import { fetchNextQuestion, getApiUrl } from './api';
 import { AdaptiveQuestion } from './AdaptiveQuestion';
 import ProgressBar from './ProgressBar';
 import TronStartScreen from './TronStartScreen';
@@ -32,9 +33,25 @@ function App() {
   const [showOnboarding, setShowOnboarding] = React.useState(true);
   const [onboardingStep, setOnboardingStep] = React.useState(0);
   const [showPreamble, setShowPreamble] = React.useState(false);
-  // Allow skipping onboarding/preamble via URL (e.g., ?start=1)
+  // Optional: allow skipping onboarding/preamble via URL ONLY if explicitly enabled by env flag VITE_ALLOW_SKIP=true
   React.useEffect(() => {
     try {
+      // Resolve feature flag from Vite env or Node env without breaking tests
+      const allowSkip = (() => {
+        try {
+          const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
+          if (metaEnv && (metaEnv as any).VITE_ALLOW_SKIP != null) {
+            const v = String((metaEnv as any).VITE_ALLOW_SKIP);
+            return ['1','true','yes','on'].includes(v.toLowerCase());
+          }
+        } catch {}
+        if (typeof process !== 'undefined' && process.env && (process.env as any).VITE_ALLOW_SKIP != null) {
+          const v = String((process.env as any).VITE_ALLOW_SKIP);
+          return ['1','true','yes','on'].includes(v.toLowerCase());
+        }
+        return false;
+      })();
+      if (!allowSkip) return; // enforce seamless flow by default
       const params = new URLSearchParams(window.location.search);
       if (params.has('start') || params.has('skip') || params.get('mode') === 'demo') {
         setShowOnboarding(false);
@@ -66,6 +83,49 @@ function App() {
   ];
   const totalQuestions = QUESTIONS.length;
   const { listening, start, stop, error } = useVoiceControl({});
+  const [topNextLoading, setTopNextLoading] = React.useState(false);
+
+  async function handleTopNext() {
+    if (topNextLoading) return;
+    const currentIdx = state.currentQuestion;
+    const responseText = state.voiceTranscript || state.responses[currentIdx]?.text || '';
+    const sentiment = state.responses[currentIdx]?.sentiment || '';
+    const eqScore = state.responses[currentIdx]?.eqScore;
+    const emotion_scores = state.responses[currentIdx]?.emotion_scores;
+    const voice_features = state.responses[currentIdx]?.voice_features;
+    if (!responseText.trim()) {
+      // No text: just advance to keep UX fluid
+      dispatch({ type: 'SET_CURRENT_QUESTION', value: Math.min(currentIdx + 1, totalQuestions - 1) });
+      return;
+    }
+    setTopNextLoading(true);
+    try {
+      // Submit to backend for next-question selection and capture suggested prompt
+      const nextText = await fetchNextQuestion({
+        text: responseText,
+        sentiment,
+        eq_score: eqScore,
+        emotion_scores,
+        voice_features,
+      });
+      // Persist response like AdaptiveQuestion.onRespond does
+      const updated = [...state.responses];
+      updated[currentIdx] = { ...updated[currentIdx], text: responseText, sentiment, eqScore } as any;
+      dispatch({ type: 'SET_RESPONSES', value: updated });
+      dispatch({ type: 'SET_VOICE_TRANSCRIPT', value: '' });
+      // Store backend suggestion for the NEXT prompt (adaptive override)
+      const nextIdx = Math.min(currentIdx + 1, totalQuestions - 1);
+      if (nextText && typeof nextText === 'string') {
+        dispatch({ type: 'SET_PROMPT_OVERRIDE', index: nextIdx, value: nextText });
+      }
+      // Advance index
+      dispatch({ type: 'SET_CURRENT_QUESTION', value: nextIdx });
+    } catch (e) {
+      dispatch({ type: 'SET_GLOBAL_ERROR', value: 'Next question fetch failed' });
+    } finally {
+      setTopNextLoading(false);
+    }
+  }
 
   React.useEffect(() => {
     if (state.currentQuestion >= totalQuestions && !state.showSummary) {
@@ -76,6 +136,20 @@ function App() {
   function handleBackendError(msg: string) {
     dispatch({ type: 'SET_GLOBAL_ERROR', value: msg });
   }
+
+  // Quick backend health probe on mount to surface actionable guidance
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const base = (window as any)?.__API_BASE__ || getApiUrl();
+        const res = await fetch(base.replace(/\/$/, '') + '/health', { method: 'GET' });
+        if (!res.ok) throw new Error('bad');
+      } catch {
+        dispatch({ type: 'SET_GLOBAL_ERROR', value: 'Backend is not reachable. Start it with the "Start backend only" task or run-local.ps1.' });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -106,7 +180,7 @@ function App() {
         <SummaryScreen
           responses={state.responses?.map((r, i) => ({
             analysis: r || {},
-            prompt: QUESTIONS[i] || ''
+            prompt: (state.promptOverrides?.[i] ?? QUESTIONS[i]) || ''
           })) || []}
           candidateName={state.candidateName || ''}
         />
@@ -158,7 +232,7 @@ function App() {
                     paddingBottom: 12,
                     width: '100%',
                   }}>
-                    {QUESTIONS[state.currentQuestion]}
+                    {state.promptOverrides?.[state.currentQuestion] ?? QUESTIONS[state.currentQuestion]}
                   </div>
                   <div style={{ display: 'flex', gap: 16, margin: '1.2rem 0 0.5rem 0', width: '100%', justifyContent: 'center' }}>
                     <button
@@ -178,6 +252,23 @@ function App() {
                         border: 'none',
                       }}
                     >Previous</button>
+                    <button
+                      onClick={handleTopNext}
+                      disabled={topNextLoading || state.currentQuestion >= totalQuestions - 1 || !(state.voiceTranscript || state.responses[state.currentQuestion]?.text || '').trim()}
+                      className="animated-btn"
+                      style={{
+                        background: (topNextLoading || state.currentQuestion >= totalQuestions - 1 || !(state.voiceTranscript || state.responses[state.currentQuestion]?.text || '').trim()) ? '#444' : '#7f5cff',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        fontSize: 18,
+                        borderRadius: 14,
+                        padding: '0.7em 2.2em',
+                        boxShadow: (topNextLoading || state.currentQuestion >= totalQuestions - 1 || !(state.voiceTranscript || state.responses[state.currentQuestion]?.text || '').trim()) ? 'none' : '0 0 16px #7f5cff',
+                        letterSpacing: 1,
+                        transition: 'background 0.2s, color 0.2s',
+                        border: 'none',
+                      }}
+                    >{topNextLoading ? 'Submitting...' : 'Next'}</button>
                   </div>
                   <div style={{ width: '100%', marginTop: 12 }}>
                     <VoiceAnalysisDemo />

@@ -1,0 +1,77 @@
+name: CI
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci || npm install
+      - name: Run tests
+        run: npm test -- --runInBand
+
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          pip install -r backend/requirements.txt
+      - name: Import FastAPI app (syntax check)
+        run: python -c "import backend.main as m; print('App title:', m.app.title)"
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Derive meta
+        id: meta
+        run: |
+          echo "version=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          short_sha=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+          build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "build_time=$build_time" >> $GITHUB_OUTPUT
+      - name: Build backend image
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            --build-arg APP_VERSION=${{ steps.meta.outputs.version }} \
+            --build-arg APP_COMMIT=${{ steps.meta.outputs.short_sha }} \
+            --build-arg APP_BUILD_TIME=${{ steps.meta.outputs.build_time }} \
+            -t eq-backend:${{ steps.meta.outputs.short_sha }} .
+      - name: Build frontend image
+        run: |
+          docker build \
+            -f frontend.Dockerfile \
+            -t eq-frontend:${{ steps.meta.outputs.short_sha }} .
+      - name: Log in to registry
+        if: secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Push images
+        if: steps.meta.outputs.short_sha && secrets.DOCKER_USERNAME
+        run: |
+          docker tag eq-backend:${{ steps.meta.outputs.short_sha }} ${{ secrets.DOCKER_USERNAME }}/eq-backend:${{ steps.meta.outputs.short_sha }}
+          docker tag eq-frontend:${{ steps.meta.outputs.short_sha }} ${{ secrets.DOCKER_USERNAME }}/eq-frontend:${{ steps.meta.outputs.short_sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/eq-backend:${{ steps.meta.outputs.short_sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/eq-frontend:${{ steps.meta.outputs.short_sha }}

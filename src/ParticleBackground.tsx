@@ -1,20 +1,5 @@
-
-let getViteApiUrl: (() => string) | undefined;
-if (!(typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID)) {
-  // Only import in non-test environments
-  import('./getViteApiUrl').then(mod => {
-    getViteApiUrl = mod.getViteApiUrl;
-  });
-}
-
-function getApiUrl() {
-  if (typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID) {
-    return process.env.VITE_API_URL || 'http://localhost:8000/';
-  }
-  return getViteApiUrl ? getViteApiUrl() : 'http://localhost:8000/';
-}
-
 import React, { useEffect, useRef, useState } from 'react';
+import { getApiUrl } from './api';
 // ...existing code...
 
 // Number of animated particles
@@ -28,8 +13,24 @@ function randomBetween(a: number, b: number) {
 }
 
 const ParticleBackground: React.FC = () => {
-  // Backend message state
+  // Backend message overlay (debug only)
   const [backendMessage, setBackendMessage] = useState<string | null>(null);
+  const isTest = typeof process !== 'undefined' && !!(process.env as any)?.JEST_WORKER_ID;
+  // debug flag from env
+  const debugOverlay = (() => {
+    try {
+      const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
+      if (metaEnv && (metaEnv as any).VITE_DEBUG_OVERLAY != null) {
+        const v = String((metaEnv as any).VITE_DEBUG_OVERLAY);
+        return ['1','true','yes','on'].includes(v.toLowerCase());
+      }
+    } catch {}
+    if (typeof process !== 'undefined' && process.env && (process.env as any).VITE_DEBUG_OVERLAY != null) {
+      const v = String((process.env as any).VITE_DEBUG_OVERLAY);
+      return ['1','true','yes','on'].includes(v.toLowerCase());
+    }
+    return false;
+  })();
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Animation frame ref
@@ -46,20 +47,15 @@ const ParticleBackground: React.FC = () => {
   };
   const particles = useRef<Particle[]>([]);
 
-  // Fetch backend message on mount
+  // Fetch backend message on mount (debug only; skip in tests)
   useEffect(() => {
-  const apiUrl = getApiUrl();
+    if (!debugOverlay || isTest) return;
+    const apiUrl = getApiUrl();
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => setBackendMessage(data.message))
-      .catch(error => {
-        if (typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID) {
-          // Suppress error logging in test environment
-          return;
-        }
-        console.error('Backend fetch error:', error);
-      });
-  }, []);
+      .catch(() => {});
+  }, [debugOverlay, isTest]);
 
   // Handle canvas drawing and animation
   useEffect(() => {
@@ -133,7 +129,7 @@ const ParticleBackground: React.FC = () => {
         }}
         aria-hidden="true"
       />
-      {backendMessage && (
+      {debugOverlay && backendMessage && (
         <div style={{ position: 'absolute', top: 0, right: 0, background: '#fff', color: '#222', padding: '0.5em', zIndex: 1000 }}>
           Backend: {backendMessage}
         </div>

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eq-frontend
+  labels:
+    app: eq-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eq-frontend
+  template:
+    metadata:
+      labels:
+        app: eq-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: your-registry/eq-frontend:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: VITE_API_BASE
+              value: "https://api.your-domain.example.com"
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eq-frontend
+  labels:
+    app: eq-frontend
+spec:
+  selector:
+    app: eq-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  type: ClusterIP

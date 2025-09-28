@@ -6,19 +6,42 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "jest": {
+    "setupFiles": [
+      "./jest.setup.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/setupTests.ts"
+    ],
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    },
+    "testEnvironment": "jsdom"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
+    "@types/testing-library__react": "^10.0.1",
     "@vitejs/plugin-react": "^5.0.2",
+    "babel-jest": "^30.1.2",
+    "jest": "^30.1.3",
+  "jest-environment-jsdom": "^30.1.2",
     "vite": "^7.1.5"
   },
   "dependencies": {
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "jspdf": "^3.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   }

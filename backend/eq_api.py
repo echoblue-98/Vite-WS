@@ -1,12 +1,12 @@
 
 """
 eq_api.py
-FastAPI sub-app for EQ scoring endpoint. Clean, documented, and ready for extension.
+FastAPI APIRouter for EQ scoring endpoint. Clean, documented, and ready for extension.
 """
-from fastapi import FastAPI
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-app = FastAPI()
+router = APIRouter()
 
 class EQRequest(BaseModel):
     """Request model for EQ scoring."""
@@ -27,7 +27,7 @@ def calculate_eq_score(response: str, inflection: dict) -> int:
         score += 10
     return score
 
-@app.post("/score")
+@router.post("/score")
 async def score_endpoint(req: EQRequest):
     """
     POST /score

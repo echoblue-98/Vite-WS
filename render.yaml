@@ -16,3 +16,5 @@ services:
       - key: HSTS_ENABLED
         # Disable unless you are fronted by HTTPS/Custom Domain
         value: "false"
+      - key: ELEVENLABS_VOICE_ID
+        value: aY9ejnGefMHNgwzgYnU1

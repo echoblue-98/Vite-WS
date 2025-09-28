@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eq-redis
+  labels:
+    app: eq-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eq-redis
+  template:
+    metadata:
+      labels:
+        app: eq-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eq-redis
+  labels:
+    app: eq-redis
+spec:
+  selector:
+    app: eq-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP

@@ -1,19 +1,5 @@
-
-let getViteApiUrl: (() => string) | undefined;
-if (!(typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID)) {
-  // Only import in non-test environments
-  import('./getViteApiUrl').then(mod => {
-    getViteApiUrl = mod.getViteApiUrl;
-  });
-}
-
-function getApiUrl() {
-  if (typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID) {
-    return process.env.VITE_API_URL || 'http://localhost:8000';
-  }
-  return getViteApiUrl ? getViteApiUrl() : 'http://localhost:8000';
-}
 import React, { useRef, useState } from "react";
+import { getApiUrl } from './api';
 import { SimpleWavRecorder } from "./audioRecorder";
 import { useAppState } from "./context/AppStateContext";
 import { useVoiceControl } from "./useVoiceControl";

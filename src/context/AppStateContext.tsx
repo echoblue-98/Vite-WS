@@ -11,6 +11,8 @@ export interface AppState {
   selectedArchetype: string;
   voiceTranscript: string;
   isAnalyzing: boolean;
+  // Adaptive prompt overrides per question index
+  promptOverrides: Record<number, string>;
 }
 
 export const initialState: AppState = {
@@ -29,6 +31,7 @@ export const initialState: AppState = {
   selectedArchetype: '',
   voiceTranscript: '',
   isAnalyzing: false,
+  promptOverrides: {},
 }
 
 // --- Actions ---
@@ -41,7 +44,8 @@ type Action =
   | { type: 'SET_SHOW_SUMMARY'; value: boolean }
   | { type: 'SET_SELECTED_ARCHETYPE'; value: string }
   | { type: 'SET_VOICE_TRANSCRIPT'; value: string }
-  | { type: 'SET_IS_ANALYZING'; value: boolean };
+  | { type: 'SET_IS_ANALYZING'; value: boolean }
+  | { type: 'SET_PROMPT_OVERRIDE'; index: number; value: string };
 
 function appStateReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -63,6 +67,8 @@ function appStateReducer(state: AppState, action: Action): AppState {
       return { ...state, voiceTranscript: action.value };
     case 'SET_IS_ANALYZING':
       return { ...state, isAnalyzing: action.value };
+    case 'SET_PROMPT_OVERRIDE':
+      return { ...state, promptOverrides: { ...state.promptOverrides, [action.index]: action.value } };
     default:
       return state;
   }
