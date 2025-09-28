@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppState } from './context/AppStateContext';
+import { getApiUrl } from './api';
 
 interface TronStartScreenProps { onStart: () => void }
 
@@ -27,15 +28,8 @@ const TronStartScreen: React.FC<TronStartScreenProps> = ({ onStart }) => {
     }
   } catch {/* ignore */}
 
-  // Resolve API base consistently with the rest of the app: VITE_API_URL -> process.env -> localhost
-  let apiBase = 'http://localhost:8000';
-  try {
-    const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
-    if (metaEnv && metaEnv.VITE_API_URL) apiBase = metaEnv.VITE_API_URL as string;
-    else if (typeof process !== 'undefined' && process.env && (process.env as any).VITE_API_URL) apiBase = (process.env as any).VITE_API_URL as string;
-  } catch {/* ignore */}
-  // ensure no trailing slash conflicts in fetch path joining
-  apiBase = (apiBase || '').replace(/\/$/, '');
+  // Resolve API base using the shared helper (leverages Vercel /api rewrite in browser)
+  const apiBase = getApiUrl();
 
   // Optional overrides for voice/script via env
   let defaultVoiceId: string | undefined;

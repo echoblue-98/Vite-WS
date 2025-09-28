@@ -38,13 +38,17 @@ export function getApiUrl(): string {
   try {
     const metaEnv = (Function('try { return (typeof import !== "undefined" && import.meta && import.meta.env) ? import.meta.env : undefined } catch { return undefined }'))();
     const viteUrl = (metaEnv && (metaEnv as any).VITE_API_URL) as string | undefined;
-    if (viteUrl && viteUrl.length > 0) return viteUrl;
+    if (viteUrl && viteUrl.length > 0) return viteUrl.replace(/\/$/, '');
   } catch {}
   // Fallback to Node/Jest env (tests)
   if (typeof process !== 'undefined' && process.env?.VITE_API_URL) {
-    return process.env.VITE_API_URL as string;
+    return (process.env.VITE_API_URL as string).replace(/\/$/, '');
   }
-  // Sensible default for local
+  // If running in a browser without explicit env, use Vercel rewrite proxy
+  if (typeof window !== 'undefined') {
+    return '/api';
+  }
+  // Sensible default for local dev servers
   return 'http://localhost:8000';
 }
 
