@@ -16,23 +16,7 @@ from .redis_utils import get_redis_client
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
-ELEVEN_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAMPLE_VOICE_ID")
-# You can override this default script via PREAMBLE_SCRIPT; {name}, {company}, {product} placeholders supported
-DEFAULT_SCRIPT = os.getenv(
-    "PREAMBLE_SCRIPT",
-    (
-        "Welcome{name_part} to the {company} {product}. "
-        "You'll answer a short set of questions—focused on how you communicate, decide, and connect. "
-        "Keep it natural. If you need a moment, pause—then continue where you left off. "
-        "Take a comfortable breath... and when you're ready, we'll begin."
-    ),
-)
-DEFAULT_COMPANY = os.getenv("PREAMBLE_COMPANY", "Western & Southern Financial Group")
-DEFAULT_PRODUCT = os.getenv("PREAMBLE_PRODUCT", "AI Adaptive Interview")
-MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_monolingual_v1")
-
-# Default voice setting overrides via env (fine‑tuning for more natural cadence)
+# --- Helpers to read env dynamically at request time ---
 def _env_bool(name: str, default: bool) -> bool:
     val = os.getenv(name)
     if val is None:
@@ -45,10 +29,33 @@ def _env_float(name: str, default: float) -> float:
     except Exception:
         return default
 
-DEF_STABILITY = _env_float("PREAMBLE_STABILITY", 0.32)
-DEF_SIMILARITY = _env_float("PREAMBLE_SIMILARITY", 0.94)
-DEF_STYLE = _env_float("PREAMBLE_STYLE", 0.68)
-DEF_SPEAKER_BOOST = _env_bool("PREAMBLE_SPEAKER_BOOST", True)
+def _get_eleven_config() -> tuple[str | None, str, str]:
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    voice_id = os.getenv("ELEVENLABS_VOICE_ID", "EXAMPLE_VOICE_ID")
+    model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_monolingual_v1")
+    return api_key, voice_id, model_id
+
+def _get_preamble_defaults() -> tuple[str, str, str]:
+    script = os.getenv(
+        "PREAMBLE_SCRIPT",
+        (
+            "Welcome{name_part} to the {company} {product}. "
+            "You'll answer a short set of questions—focused on how you communicate, decide, and connect. "
+            "Keep it natural. If you need a moment, pause—then continue where you left off. "
+            "Take a comfortable breath... and when you're ready, we'll begin."
+        ),
+    )
+    company = os.getenv("PREAMBLE_COMPANY", "Western & Southern Financial Group")
+    product = os.getenv("PREAMBLE_PRODUCT", "AI Adaptive Interview")
+    return script, company, product
+
+def _get_voice_defaults() -> dict:
+    return {
+        "stability": _env_float("PREAMBLE_STABILITY", 0.32),
+        "similarity_boost": _env_float("PREAMBLE_SIMILARITY", 0.94),
+        "style": _env_float("PREAMBLE_STYLE", 0.68),
+        "use_speaker_boost": _env_bool("PREAMBLE_SPEAKER_BOOST", True),
+    }
 
 # Simple in-memory cache {key: (expires_at, bytes)}
 _CACHE: dict[str, tuple[float, bytes]] = {}
@@ -153,24 +160,23 @@ async def tts_preamble(
     """Return preamble narration audio (MP3) generated on-demand via ElevenLabs.
     Caches result in-memory for TTL to reduce cost/latency.
     Query param force=true bypasses cache (for admin refresh)."""
-    if not ELEVEN_API_KEY:
+    api_key, v_id, m_id = _get_eleven_config()
+    if not api_key:
         raise HTTPException(status_code=503, detail="TTS disabled")
 
-    # Build effective script and voice/settings
+    # Build effective script and voice/settings (evaluate env at request time)
     person = (name or "").strip()
     name_part = f" {person}," if person else ""
-    company = DEFAULT_COMPANY
-    product = DEFAULT_PRODUCT
-    base_script = (script or DEFAULT_SCRIPT)
+    base_script, company, product = _get_preamble_defaults()
+    base_script = (script or base_script)
     effective_script = base_script.replace("{name}", person).replace("{name_part}", name_part).replace("{company}", company).replace("{product}", product)
     # Enforce configured voice/model regardless of client params
-    v_id = VOICE_ID
-    m_id = MODEL_ID
+    defaults = _get_voice_defaults()
     voice_settings = {
-        "stability": DEF_STABILITY if stability is None else stability,
-        "similarity_boost": DEF_SIMILARITY if similarity_boost is None else similarity_boost,
-        "style": DEF_STYLE if style is None else style,
-        "use_speaker_boost": DEF_SPEAKER_BOOST if use_speaker_boost is None else bool(use_speaker_boost),
+        "stability": defaults["stability"] if stability is None else stability,
+        "similarity_boost": defaults["similarity_boost"] if similarity_boost is None else similarity_boost,
+        "style": defaults["style"] if style is None else style,
+        "use_speaker_boost": defaults["use_speaker_boost"] if use_speaker_boost is None else bool(use_speaker_boost),
     }
 
     cache_key = _cache_key(effective_script, v_id, m_id, voice_settings)
@@ -199,7 +205,7 @@ async def tts_preamble(
         "voice_settings": voice_settings,
     }
     headers = {
-        "xi-api-key": ELEVEN_API_KEY,
+        "xi-api-key": api_key,
         "Accept": "audio/mpeg",
         "Content-Type": "application/json"
     }
