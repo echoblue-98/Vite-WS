@@ -138,7 +138,6 @@ const AnimatedCircuitBackground: React.FC = () => {
 
   animationFrameId = requestAnimationFrame(animate);
     window.addEventListener("resize", onResize);
-
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", onResize);

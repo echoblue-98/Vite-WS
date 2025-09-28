@@ -1,17 +1,11 @@
-# --- Uvicorn server startup ---
-if __name__ == "__main__":
-	import uvicorn
-	uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=False)
 
-print('Starting main.py...')
 from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
-from .logging_utils import log, generate_request_id
+from backend.logging_utils import log, generate_request_id
 from backend.config import get_settings
-
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version=settings.app_version)
@@ -24,15 +18,57 @@ except ImportError:  # pragma: no cover
 	Histogram = None  # type: ignore
 
 REQUEST_COUNT = None
-REQUEST_LATENCY = None
 
-if PCounter and Histogram:
-	REQUEST_COUNT = PCounter(
-		'app_requests_total', 'Total HTTP requests', ['method', 'path', 'status']
-	)
-	REQUEST_LATENCY = Histogram(
-		'app_request_latency_seconds', 'Request latency (s)', ['method', 'path']
-	)
+# --- Router Imports ---
+print('Importing routers...')
+from backend.eq_api import router as eq_router
+from backend.questions import router as questions_router
+from backend.feedback import router as feedback_router
+from backend.emotion import router as emotion_router
+from backend.sentiment import router as sentiment_router
+from backend.archetype import router as archetype_router
+from backend.tts_preamble import router as tts_router
+print('Routers imported')
+
+# --- Router Includes ---
+print('Including routers once...')
+app.include_router(eq_router)
+app.include_router(questions_router)
+app.include_router(feedback_router)
+app.include_router(emotion_router)
+app.include_router(sentiment_router)
+try:
+	import multipart  # type: ignore
+	from backend.voice import router as voice_router
+	app.include_router(voice_router)
+except Exception as e:  # pragma: no cover
+	print('Skipping voice router (python-multipart not installed):', e)
+app.include_router(archetype_router)
+app.include_router(tts_router)
+
+# --- Lifecycle Events ---
+@app.on_event("startup")
+async def on_startup():
+    log("INFO", "startup", version=settings.app_version, commit=settings.commit)
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    log("INFO", "shutdown")
+
+# --- Readiness Endpoint ---
+@app.get("/ready")
+async def ready():
+    """Readiness probe: basic checks (cache size, env presence)."""
+    from backend.tts_preamble import _CACHE  # lightweight import
+    cache_items = len(_CACHE)
+    eleven_key = bool(os.getenv('ELEVENLABS_API_KEY'))
+    return {"status": "ready", "cache_items": cache_items, "tts_enabled": eleven_key, "version": settings.app_version}
+
+# --- Uvicorn server startup ---
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=False)
+
 
 @app.middleware("http")
 async def prometheus_middleware(request: Request, call_next):
