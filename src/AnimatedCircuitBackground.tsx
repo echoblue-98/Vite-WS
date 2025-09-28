@@ -77,7 +77,6 @@ const AnimatedCircuitBackground: React.FC = () => {
 
     // Draw all circuit lines
     function drawCircuit(time: number) {
-      ctx.clearRect(0, 0, width, height);
       ctx.save();
       // Additive blending for a soft neon look
       ctx.globalCompositeOperation = "lighter";
