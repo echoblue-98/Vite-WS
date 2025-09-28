@@ -6,8 +6,9 @@ import TronStartScreen from './TronStartScreen';
 import { AppStateProvider, useAppState } from './context/AppStateContext';
 import SummaryScreen from './SummaryScreen';
 import { useVoiceControl } from './useVoiceControl';
-import ParticleBackground from './ParticleBackground';
 import AnimatedCircuitBackground from './AnimatedCircuitBackground';
+import ParticleBackground from './ParticleBackground';
+import NeonOverlay from './NeonOverlay';
 import AdaptiveFeedback from './AdaptiveFeedback';
 import AICoachPanel from './AICoachPanel';
 import ArchetypeAlignment from './ArchetypeAlignment';
@@ -160,6 +161,8 @@ function App() {
       ) : null}
       {showOnboarding ? (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+          {/* Visual stack order: NeonOverlay (deepest) -> Circuit -> Particles -> Modal */}
+          <NeonOverlay opacity={0.75} />
           <AnimatedCircuitBackground />
           <ParticleBackground />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -197,6 +200,8 @@ function App() {
             transition: 'opacity 0.7s cubic-bezier(.4,0,.2,1), transform 0.7s cubic-bezier(.4,0,.2,1)',
             willChange: 'opacity, transform',
           }}>
+            {/* Visual stack order: NeonOverlay -> Circuit -> Particles -> Content */}
+            <NeonOverlay opacity={0.7} />
             <AnimatedCircuitBackground />
             <ParticleBackground />
             <div style={{ position: 'relative', zIndex: 1, padding: '2rem', maxWidth: 700, margin: '0 auto' }}>
