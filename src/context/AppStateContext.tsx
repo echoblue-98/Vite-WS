@@ -91,11 +91,12 @@ export const useAppState = () => useContext(AppStateContext);
 
 interface AppStateProviderProps {
   children: ReactNode;
-  initialStateOverride?: AppState;
+  initialStateOverride?: Partial<AppState>;
 }
 
 export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children, initialStateOverride }) => {
-  const [state, dispatch] = useReducer(appStateReducer, initialStateOverride || initialState);
+  const mergedInitial = { ...initialState, ...(initialStateOverride || {}) } as AppState;
+  const [state, dispatch] = useReducer(appStateReducer, mergedInitial);
   return (
     <AppStateContext.Provider value={{ state, dispatch }}>
       {children}
