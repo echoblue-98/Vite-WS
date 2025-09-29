@@ -145,6 +145,8 @@ function App() {
         const base = (window as any)?.__API_BASE__ || getApiUrl();
         const res = await fetch(base.replace(/\/$/, '') + '/health', { method: 'GET' });
         if (!res.ok) throw new Error('bad');
+        // Warm the TTS/readiness path in the background to reduce first preamble latency
+        fetch(base.replace(/\/$/, '') + '/ready').catch(() => {});
       } catch {
         dispatch({ type: 'SET_GLOBAL_ERROR', value: 'Backend is not reachable. Start it with the "Start backend only" task or run-local.ps1.' });
       }

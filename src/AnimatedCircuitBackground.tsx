@@ -112,7 +112,14 @@ const AnimatedCircuitBackground: React.FC = () => {
     }
 
     // Animate circuit lines
+    // Throttle animation slightly for smoother overall UX under load
+    let last = 0;
     function animate(now: number) {
+      if (now - last < 16) { // ~60fps cap
+        animationFrameId = requestAnimationFrame(animate);
+        return;
+      }
+      last = now;
       for (const line of lines) {
         // Gentle drift to avoid perfectly straight monotone paths
         line.angle += (Math.sin(now * 0.0002 + line.phase) * 0.002);
