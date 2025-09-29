@@ -13,6 +13,9 @@ export interface AppState {
   isAnalyzing: boolean;
   // Adaptive prompt overrides per question index
   promptOverrides: Record<number, string>;
+  // Optimistic paging: indicates background fetch for next prompt is in-flight
+  pendingNext: boolean;
+  pendingNextIndex?: number | null;
 }
 
 export const initialState: AppState = {
@@ -32,6 +35,8 @@ export const initialState: AppState = {
   voiceTranscript: '',
   isAnalyzing: false,
   promptOverrides: {},
+  pendingNext: false,
+  pendingNextIndex: null,
 }
 
 // --- Actions ---
@@ -45,7 +50,8 @@ type Action =
   | { type: 'SET_SELECTED_ARCHETYPE'; value: string }
   | { type: 'SET_VOICE_TRANSCRIPT'; value: string }
   | { type: 'SET_IS_ANALYZING'; value: boolean }
-  | { type: 'SET_PROMPT_OVERRIDE'; index: number; value: string };
+  | { type: 'SET_PROMPT_OVERRIDE'; index: number; value: string }
+  | { type: 'SET_PENDING_NEXT'; value: boolean; index?: number | null };
 
 function appStateReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -69,6 +75,8 @@ function appStateReducer(state: AppState, action: Action): AppState {
       return { ...state, isAnalyzing: action.value };
     case 'SET_PROMPT_OVERRIDE':
       return { ...state, promptOverrides: { ...state.promptOverrides, [action.index]: action.value } };
+    case 'SET_PENDING_NEXT':
+      return { ...state, pendingNext: action.value, pendingNextIndex: action.index ?? state.pendingNextIndex };
     default:
       return state;
   }

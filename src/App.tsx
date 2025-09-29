@@ -101,26 +101,39 @@ function App() {
     }
     setTopNextLoading(true);
     try {
-      // Submit to backend for next-question selection and capture suggested prompt
-      const nextText = await fetchNextQuestion({
+      // Persist current response synchronously
+      const updated = [...state.responses];
+      updated[currentIdx] = { ...updated[currentIdx], text: responseText, sentiment, eqScore } as any;
+      dispatch({ type: 'SET_RESPONSES', value: updated });
+      dispatch({ type: 'SET_VOICE_TRANSCRIPT', value: '' });
+
+      // Compute next index and advance immediately (optimistic paging)
+      const nextIdx = Math.min(currentIdx + 1, totalQuestions - 1);
+      dispatch({ type: 'SET_CURRENT_QUESTION', value: nextIdx });
+      dispatch({ type: 'SET_PENDING_NEXT', value: true, index: nextIdx });
+
+      // Fire-and-forget background fetch with timeout so UI never blocks
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4500);
+      fetchNextQuestion({
         text: responseText,
         sentiment,
         eq_score: eqScore,
         emotion_scores,
         voice_features,
-      });
-      // Persist response like AdaptiveQuestion.onRespond does
-      const updated = [...state.responses];
-      updated[currentIdx] = { ...updated[currentIdx], text: responseText, sentiment, eqScore } as any;
-      dispatch({ type: 'SET_RESPONSES', value: updated });
-      dispatch({ type: 'SET_VOICE_TRANSCRIPT', value: '' });
-      // Store backend suggestion for the NEXT prompt (adaptive override)
-      const nextIdx = Math.min(currentIdx + 1, totalQuestions - 1);
-      if (nextText && typeof nextText === 'string') {
-        dispatch({ type: 'SET_PROMPT_OVERRIDE', index: nextIdx, value: nextText });
-      }
-      // Advance index
-      dispatch({ type: 'SET_CURRENT_QUESTION', value: nextIdx });
+      })
+        .then((nextText) => {
+          if (typeof nextText === 'string' && nextText.trim()) {
+            dispatch({ type: 'SET_PROMPT_OVERRIDE', index: nextIdx, value: nextText });
+          }
+        })
+        .catch(() => {
+          // Soft-fail: keep default question; no user-visible error
+        })
+        .finally(() => {
+          clearTimeout(timeout);
+          dispatch({ type: 'SET_PENDING_NEXT', value: false, index: null });
+        });
     } catch (e) {
       dispatch({ type: 'SET_GLOBAL_ERROR', value: 'Next question fetch failed' });
     } finally {
@@ -277,6 +290,11 @@ function App() {
                       }}
                     >{topNextLoading ? 'Submitting...' : 'Next'}</button>
                   </div>
+                  {state.pendingNext && (
+                    <div style={{ color: '#9aeff8', textAlign: 'center', fontSize: 12, opacity: 0.9 }}>
+                      Personalizing next question...
+                    </div>
+                  )}
                   <div style={{ width: '100%', marginTop: 12 }}>
                     <VoiceAnalysisDemo />
                   </div>
